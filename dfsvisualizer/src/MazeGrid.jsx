@@ -1,115 +1,154 @@
-import React, { useState } from "react";
-import './app.css';
+import { useEffect, useState } from "react";
+import "./App.css";
 
-export default function MazeGrid() {
-  const initialMaze = [
-    ["wall", "wall", "wall", "wall"],
-    ["start", "path", "path", "wall"],
-    ["wall", "wall", "path", "end"],
-    ["wall", "wall", "wall", "wall"],
-  ];
+export default function MazeGrid({ width = 20, height = 20 }) {
+  const [maze, setMaze] = useState([]);
+  const [timeoutIds, setTimeoutIds] = useState([]);
 
-  const [maze, setMaze] = useState(initialMaze);
+  useEffect(() => {
+    generateMaze(height, width);
+  }, []);
 
-  // BFS Algorithm
   function bfs(startNode) {
-    const queue = [startNode];
-    const visited = new Set([`${startNode[0]},${startNode[1]}`]);
+    let queue = [startNode];
+    let visited = new Set([`${startNode[0]},${startNode[1]}`]);
 
-    function visitCell([x, y]) {
+    function visitCell(x, y) {
+      console.log(x, y);
+
+      setMaze((prevMaze) =>
+        prevMaze.map((row, rowIndex) =>
+          row.map((cell, cellIndex) =>
+            rowIndex === y && cellIndex === x
+              ? cell === "end"
+                ? "end"
+                : "visited"
+              : cell
+          )
+        )
+      );
+
       if (maze[y][x] === "end") {
-        console.log("Path found!");
+        console.log("path found!");
         return true;
       }
       return false;
     }
 
-    while (queue.length > 0) {
-      const [x, y] = queue.shift();
+    function step() {
+      if (queue.length === 0) {
+        return;
+      }
 
+      const [x, y] = queue.shift();
+      console.log("new step");
       const dirs = [
-        [0, 1],  // Right
-        [1, 0],  // Down
-        [0, -1], // Left
-        [-1, 0], // Up
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
       ];
 
       for (const [dx, dy] of dirs) {
         const nx = x + dx;
         const ny = y + dy;
-
         if (
           nx >= 0 &&
-          nx < maze[0].length &&
+          nx < width &&
           ny >= 0 &&
-          ny < maze.length &&
+          ny < height &&
           !visited.has(`${nx},${ny}`)
         ) {
           visited.add(`${nx},${ny}`);
-
           if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
-            if (visitCell([nx, ny])) return true;
-
+            if (visitCell(nx, ny)) {
+              return true;
+            }
             queue.push([nx, ny]);
           }
         }
       }
+
+      const timeoutId = setTimeout(step, 100);
+      setTimeoutIds((previousTimeoutIds) => [
+        ...previousTimeoutIds,
+        timeoutId,
+      ]);
     }
 
-    console.log("No path found");
+    step();
     return false;
   }
 
-  // DFS Algorithm
   function dfs(startNode) {
-    const stack = [startNode];
-    const visited = new Set([`${startNode[0]},${startNode[1]}`]);
+    let stack = [startNode];
+    let visited = new Set([`${startNode[0]},${startNode[1]}`]);
 
-    function visitCell([x, y]) {
+    function visitCell(x, y) {
+      setMaze((prevMaze) =>
+        prevMaze.map((row, rowIndex) =>
+          row.map((cell, cellIndex) =>
+            rowIndex === y && cellIndex === x
+              ? cell === "end"
+                ? "end"
+                : "visited"
+              : cell
+          )
+        )
+      );
+
       if (maze[y][x] === "end") {
-        console.log("Path found!");
+        console.log("path found!");
         return true;
       }
       return false;
     }
 
-    while (stack.length > 0) {
-      const [x, y] = stack.pop();
+    function step() {
+      if (stack.length === 0) {
+        return;
+      }
 
+      const [x, y] = stack.pop();
+      console.log("new step");
       const dirs = [
-        [0, 1],  // Right
-        [1, 0],  // Down
-        [0, -1], // Left
-        [-1, 0], // Up
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
       ];
 
       for (const [dx, dy] of dirs) {
         const nx = x + dx;
         const ny = y + dy;
-
         if (
           nx >= 0 &&
-          nx < maze[0].length &&
+          nx < width &&
           ny >= 0 &&
-          ny < maze.length &&
+          ny < height &&
           !visited.has(`${nx},${ny}`)
         ) {
           visited.add(`${nx},${ny}`);
-
           if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
-            if (visitCell([nx, ny])) return true;
-
+            if (visitCell(nx, ny)) {
+              return true;
+            }
             stack.push([nx, ny]);
           }
         }
       }
+
+      const timeoutId = setTimeout(step, 100);
+      setTimeoutIds((previousTimeoutIds) => [
+        ...previousTimeoutIds,
+        timeoutId,
+      ]);
     }
 
-    console.log("No path found");
+    step();
     return false;
   }
 
-  // Generate Maze
   function generateMaze(height, width) {
     let matrix = [];
 
@@ -122,8 +161,8 @@ export default function MazeGrid() {
     }
 
     const dirs = [
-      [0, 1],  // Right
-      [1, 0],  // Down
+      [0, 1], // Right
+      [1, 0], // Down
       [0, -1], // Left
       [-1, 0], // Up
     ];
@@ -159,39 +198,38 @@ export default function MazeGrid() {
     matrix[1][0] = "start";
     matrix[height - 2][width - 1] = "end";
 
+
+
     setMaze(matrix);
+  }
+
+  function refreshMaze() {
+    timeoutIds.forEach(clearTimeout);
+    setTimeoutIds([]);
+    generateMaze(20, 20);
   }
 
   return (
     <div className="maze-grid">
-      <div>
-        <button
-          className="maze-button"
-          onClick={() => generateMaze(10, 10)}
-        >
+      <div className="controls">
+        <button className="maze-button" onClick={refreshMaze}>
           Refresh Maze
         </button>
-        <button
-          className="maze-button"
-          onClick={() => bfs([1, 0])}
-        >
+        <button className="maze-button" onClick={() => bfs([1, 0])}>
           BFS
         </button>
-        <button
-          className="maze-button"
-          onClick={() => dfs([1, 0])}
-        >
+        <button className="maze-button" onClick={() => dfs([1, 0])}>
           DFS
         </button>
-        <div className="maze">
-          {maze.map((row, rowIndex) => (
-            <div className="row" key={rowIndex}>
-              {row.map((cell, cellIndex) => (
-                <div className={`cell ${cell}`} key={cellIndex}></div>
-              ))}
-            </div>
-          ))}
-        </div>
+      </div>
+      <div className="maze">
+        {maze.map((row, rowIndex) => (
+          <div className="row" key={rowIndex}>
+            {row.map((cell, cellIndex) => (
+              <div className={`cell ${cell}`} key={cellIndex}></div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
