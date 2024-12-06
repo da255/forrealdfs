@@ -9,15 +9,6 @@ main{
     justify-content: center;
     height: 100vh;
 }
-
-.controls{
-    display : flex;
-    flex-direction: row;
-    margin-bottom: 20px;
-}
-
-
-
 .maze-button {
     background-color: #0091ff;
     margin: 10px;
@@ -29,15 +20,13 @@ main{
     padding: 10px 20px;
   }
   
-  .maze {
+.maze {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start; /* Align maze at the top */
-    height: auto; /* Adjust height to fit the content */
-    margin-top: 20px; /* Add spacing between buttons and maze */
-}
-
+    justify-content: center;
+    height: 100vh;
+  }
   
 
 
