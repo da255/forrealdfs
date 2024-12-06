@@ -9,13 +9,25 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     generateMaze(height, width);
   }, []);
 
+  function resetVisitedCells() {
+    
+    setMaze((prevMaze) =>
+      prevMaze.map((row) =>
+        row.map((cell) =>
+          cell === "visited" ? "path" : cell // Reset visited cells to "path"
+        )
+      )
+    );
+    timeoutIds.forEach(clearTimeout);
+    setTimeoutIds([]);
+  }
+
   function bfs(startNode) {
+    resetVisitedCells()
     let queue = [startNode];
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
 
     function visitCell(x, y) {
-      console.log(x, y);
-
       setMaze((prevMaze) =>
         prevMaze.map((row, rowIndex) =>
           row.map((cell, cellIndex) =>
@@ -41,7 +53,6 @@ export default function MazeGrid({ width = 20, height = 20 }) {
       }
 
       const [x, y] = queue.shift();
-      console.log("new step");
       const dirs = [
         [0, 1],
         [1, 0],
@@ -57,21 +68,20 @@ export default function MazeGrid({ width = 20, height = 20 }) {
           nx < width &&
           ny >= 0 &&
           ny < height &&
-          !visited.has(`${nx},${ny}`)
+          !visited.has(`${nx},${ny}`) &&
+          (maze[ny][nx] === "path" || maze[ny][nx] === "end")
         ) {
           visited.add(`${nx},${ny}`);
-          if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
-            if (visitCell(nx, ny)) {
-              return true;
-            }
-            queue.push([nx, ny]);
+          if (visitCell(nx, ny)) {
+            return true;
           }
+          queue.push([nx, ny]);
         }
       }
 
       const timeoutId = setTimeout(step, 100);
-      setTimeoutIds((previousTimeoutIds) => [
-        ...previousTimeoutIds,
+      setTimeoutIds((prevTimeoutIds) => [
+        ...prevTimeoutIds,
         timeoutId,
       ]);
     }
@@ -81,6 +91,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
   }
 
   function dfs(startNode) {
+    resetVisitedCells()
     let stack = [startNode];
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
 
@@ -110,7 +121,86 @@ export default function MazeGrid({ width = 20, height = 20 }) {
       }
 
       const [x, y] = stack.pop();
-      console.log("new step");
+      const dirs = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
+      ];
+
+      for (const [dx, dy] of dirs) {
+        
+        const nx = x + dx;
+        const ny = y + dy;
+        if (
+          nx >= 0 &&
+          nx < width &&
+          ny >= 0 &&
+          ny < height &&
+          !visited.has(`${nx},${ny}`) &&
+          (maze[ny][nx] === "path" || maze[ny][nx] === "end")
+        ) {
+          visited.add(`${nx},${ny}`);
+          if (visitCell(nx, ny)) {
+            return true;
+          }
+          stack.push([nx, ny]);
+        }
+      }
+
+      const timeoutId = setTimeout(step, 100);
+      setTimeoutIds((prevTimeoutIds) => [
+        ...prevTimeoutIds,
+        timeoutId,
+      ]);
+    }
+
+    step();
+    return false;
+  }
+
+  function aStar(startNode, endNode) {       
+    
+    resetVisitedCells()
+    let openSet = [startNode];    
+    let visited = new Set([`${startNode[0]},${startNode[1]}`]);
+    
+    let gScore = { [`${startNode[0]},${startNode[1]}`]: 0 };
+    let fScore = { [`${startNode[0]},${startNode[1]}`]: heuristic(startNode, endNode) };
+
+    function heuristic([x, y], [ex, ey]) {
+      return Math.abs(x - ex) + Math.abs(y - ey); 
+    }
+
+    function visitCell(x, y) {
+      setMaze((prevMaze) =>
+        prevMaze.map((row, rowIndex) =>
+          row.map((cell, cellIndex) =>
+            rowIndex === y && cellIndex === x
+              ? cell === "end"
+                ? "end"
+                : "visited"
+              : cell
+          )
+        )
+      );
+
+      if (maze[y][x] === "end") {
+        console.log("path found!");
+        return true;
+      }
+      return false;
+    }
+
+    function step() {
+      if (openSet.length === 0) {
+        
+        return;
+      }
+
+      openSet.sort((a, b) => fScore[`${a[0]},${a[1]}`] - fScore[`${b[0]},${b[1]}`]);
+      const [x, y] = openSet.shift();
+
       const dirs = [
         [0, 1],
         [1, 0],
@@ -121,33 +211,104 @@ export default function MazeGrid({ width = 20, height = 20 }) {
       for (const [dx, dy] of dirs) {
         const nx = x + dx;
         const ny = y + dy;
+        const neighbor = `${nx},${ny}`;
+
         if (
           nx >= 0 &&
           nx < width &&
           ny >= 0 &&
           ny < height &&
-          !visited.has(`${nx},${ny}`)
+          !visited.has(neighbor) &&
+          (maze[ny][nx] === "path" || maze[ny][nx] === "end")
         ) {
-          visited.add(`${nx},${ny}`);
-          if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
-            if (visitCell(nx, ny)) {
-              return true;
-            }
-            stack.push([nx, ny]);
+          const tentativeGScore = gScore[`${x},${y}`] + 1;
+          
+
+          if (tentativeGScore < (gScore[neighbor] || Infinity)) {
+            gScore[neighbor] = tentativeGScore;
+            fScore[neighbor] = tentativeGScore + heuristic([nx, ny], endNode);
+            
           }
+          visited.add(`${x},${y}`);
+          if (visitCell(x, y)) {
+            return;
+          }
+
+          openSet.push([nx, ny]);
         }
+
       }
 
       const timeoutId = setTimeout(step, 100);
-      setTimeoutIds((previousTimeoutIds) => [
-        ...previousTimeoutIds,
-        timeoutId,
-      ]);
+      setTimeoutIds((prevTimeoutIds) => [...prevTimeoutIds, timeoutId]);
     }
 
     step();
-    return false;
   }
+
+  function dijkstra(startNode) {
+    resetVisitedCells(); // Clear the board before starting
+    let openSet = [[startNode[0], startNode[1]]]; // Start with the starting node
+    let visited = new Set([`${startNode[0]},${startNode[1]}`]); // Track visited nodes
+    let gScore = { [`${startNode[0]},${startNode[1]}`]: 0 }; // Initialize gScore for the start nod
+      
+    function step() {
+      if (openSet.length === 0) {
+        console.log("No path found!");
+        return;
+      }
+  
+  
+      // Sort openSet by gScore (not fScore, since there's no heuristic in Dijkstra)
+      openSet.sort((a, b) => gScore[`${a[0]},${a[1]}`] - gScore[`${b[0]},${b[1]}`]);
+      const [x, y] = openSet.shift(); // Take the node with the lowest gScore
+  
+      // If the current node is the goal, stop the algorithm
+      if (maze[y][x] === "end") {
+        console.log("Path found!");
+        return;
+      }
+  
+      // Explore neighbors
+      const dirs = [
+        [0, 1],  // Right
+        [1, 0],  // Down
+        [0, -1], // Left
+        [-1, 0], // Up
+      ];
+  
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const neighbor = `${nx},${ny}`;
+  
+        if (
+          nx >= 0 &&
+          nx < width &&
+          ny >= 0 &&
+          ny < height &&
+          !visited.has(neighbor) &&
+          (maze[ny][nx] === "path" || maze[ny][nx] === "end")
+        ) {
+          visited.add(neighbor);
+  
+          // Calculate tentative gScore
+          const tentativeGScore = gScore[`${x},${y}`] + 1;
+  
+          if (tentativeGScore < (gScore[neighbor] || Infinity)) {
+            gScore[neighbor] = tentativeGScore; // Update gScore
+            openSet.push([nx, ny]); // Add neighbor to openSet
+          }
+        }
+      }
+  
+      const timeoutId = setTimeout(step, 100); // Delay for visualization
+      setTimeoutIds((prevTimeoutIds) => [...prevTimeoutIds, timeoutId]);
+    }
+  
+    step(); // Start the Dijkstra algorithm
+  }
+  
 
   function generateMaze(height, width) {
     let matrix = [];
@@ -198,7 +359,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     matrix[1][0] = "start";
     matrix[height - 2][width - 1] = "end";
 
-
+    
 
     setMaze(matrix);
   }
@@ -215,11 +376,17 @@ export default function MazeGrid({ width = 20, height = 20 }) {
         <button className="maze-button" onClick={refreshMaze}>
           Refresh Maze
         </button>
-        <button className="maze-button" onClick={() => bfs([1, 0])}>
+        <button className="maze-button" onClick={() => bfs([0, 1])}>
           BFS
         </button>
-        <button className="maze-button" onClick={() => dfs([1, 0])}>
+        <button className="maze-button" onClick={() => dfs([0, 1])}>
           DFS
+        </button>
+        <button className="maze-button" onClick={() => aStar([0,1], [width - 1, height - 2])}>
+          A* Search
+        </button>
+        <button className="maze-button" onClick={() => dijkstra([1,1])}>
+          Dijkstra
         </button>
       </div>
       <div className="maze">
