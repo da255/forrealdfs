@@ -58,3 +58,7 @@ main{
     background-color: orange;
     
 }
+
+.cell.shortest{
+    background-color: green;
+}

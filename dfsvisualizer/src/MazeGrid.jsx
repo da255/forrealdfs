@@ -4,13 +4,14 @@ import "./App.css";
 export default function MazeGrid({ width = 20, height = 20 }) {
   const [maze, setMaze] = useState([]);
   const [timeoutIds, setTimeoutIds] = useState([]);
+  const [start, setStart] = useState([1, 0]);
+  const [end, setEnd] = useState([width - 1, height - 2]);
 
   useEffect(() => {
     generateMaze(height, width);
   }, []);
 
-  function resetCells() {
-    
+  function resetCells() {    
     setMaze((prevMaze) =>
       prevMaze.map((row) =>
         row.map((cell) =>
@@ -24,7 +25,8 @@ export default function MazeGrid({ width = 20, height = 20 }) {
   function bfs(startNode) {
     resetCells()
     let queue = [startNode];
-    let visited = new Set([`${startNode[0]},${startNode[1]}`]);
+    let visited = new Set([`${startNode[0]},${startNode[1]}`]); 
+
 
     function visitCell(x, y) {
       console.log(x, y);
@@ -93,9 +95,10 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     return false;
   }
 
-  function dfs(startNode) {
+  function dfs(startNode, maze) {
     resetCells()
     let stack = [startNode];
+    console.log(start);
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
 
     function visitCell(x, y) {
@@ -125,6 +128,8 @@ export default function MazeGrid({ width = 20, height = 20 }) {
 
       const [x, y] = stack.pop();
       console.log("new step");
+      console.log("Current Maze:", maze);
+
       const dirs = [
         [0, 1],
         [1, 0],
@@ -162,7 +167,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     step();
     return false;
   }
-  function starA(startNode,endNode) {
+  function starA(startNode,endNode,maze) {
     resetCells()
     let openSet = [startNode];
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
@@ -172,11 +177,8 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     function heuristic([x,y],[ex,ey]){
       return Math.abs(x - ex) + Math.abs(y - ey);
     }
-
-
     function visitCell(x, y) {
       console.log(x, y);
-
       setMaze((prevMaze) =>
         prevMaze.map((row, rowIndex) =>
           row.map((cell, cellIndex) =>
@@ -200,7 +202,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
       if (openSet.length === 0) {
         return;
       }
-    openSet.sort((a,b) => fScore[`${a[0]},${a[1]}`] - fScore[`${b[0]}, b{[1]}}`]);
+    openSet.sort((a,b) => fScore[`${a[0]},${a[1]}`] - fScore[`${b[0]},${b[1]}`]);
     const [x, y] = openSet.shift();
     console.log("new step");
     const dirs = [
@@ -222,7 +224,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
           !visited.has(`${nx},${ny}`)
         ) {
           const tentativeGscore = gScore[`${x},${y}`] + 1;
-          if (tentativeGscore < (gScore[neighbour]) || Infinity){
+          if (tentativeGscore < ((gScore[neighbour]) || Infinity)){
             gScore[neighbour] = tentativeGscore;
             fScore[neighbour] = tentativeGscore + heuristic([nx,ny], endNode);
           }
@@ -247,8 +249,10 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     return false;
   }
 
+
   function generateMaze(height, width) {
-    let matrix = [];
+    let matrix = [];   
+
 
     for (let i = 0; i < height; i++) {
       let row = [];
@@ -259,10 +263,10 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     }
 
     const dirs = [
-      [0, 1], // Right
-      [1, 0], // Down
-      [0, -1], // Left
-      [-1, 0], // Up
+      [0, 1], 
+      [1, 0], 
+      [0, -1], 
+      [-1, 0], 
     ];
 
     function isCellValid(x, y) {
@@ -274,6 +278,8 @@ export default function MazeGrid({ width = 20, height = 20 }) {
         matrix[y][x] === "wall"
       );
     }
+    const loopProbability = 0.2
+    ;
 
     function carvePath(x, y) {
       matrix[y][x] = "path";
@@ -287,18 +293,72 @@ export default function MazeGrid({ width = 20, height = 20 }) {
         if (isCellValid(nx, ny)) {
           matrix[y + dy][x + dx] = "path";
           carvePath(nx, ny);
+        }else if (Math.random() < loopProbability){
+          const rx = x + dx;
+          const ry = y + dy;
+          if (rx > 0 && ry > 0 && rx < width - 1 && ry < height - 1 && matrix[ry][rx] === 'wall'){
+            matrix[ry][rx] = 'path';
+          }
         }
       }
     }
 
     carvePath(1, 1);
 
-    matrix[1][0] = "start";
-    matrix[height - 2][width - 1] = "end";
+    function getRandomPathCell() {
+      while (true) {
+        const x = Math.floor(Math.random() * width);
+        const y = Math.floor(Math.random() * height);
+        if (matrix[y][x] === "path") {
+          return [x, y];
+        }
+      }
+    }
+
+    const [startX, startY] = getRandomPathCell();
+    matrix[startY][startX] = "start";
+    setStart([startX, startY]);
+
+    
+    
+    let [endX, endY] = getRandomPathCell();
+    while (Math.abs(startX - endX) + Math.abs(startY - endY) < Math.max(width, height) / 2) {
+      [endX, endY] = getRandomPathCell(); 
+    }
+    matrix[endY][endX] = "end";
+    setEnd([endX, endY]);
+    
+    for (let y = 1; y<height -1; y++){
+      for (let x = 1; x < width -1 ; x++)
+        if(matrix[y][x] === 'wall' &&
+          Math.random() <loopProbability &&
+          hasAdjacentPaths(matrix, x, y)
+        )
+        matrix[y][x] = "path";
+        
+    }
 
 
 
     setMaze(matrix);
+  }
+  function hasAdjacentPaths(matrix, x, y){
+    const dirs = [
+      [0, 1], 
+      [1, 0], 
+      [0, -1], 
+      [-1, 0], 
+    ];
+
+    let pathCount = 0;
+    for (let [dx, dy] of dirs){
+      const nx = x + dx;
+      const ny = y +dy;
+      if (matrix[ny]&& matrix[ny][nx] === 'path'){
+        pathCount++;
+      }
+    }
+    return pathCount >= 1000000;
   }
 
   function refreshMaze() {
@@ -313,13 +373,14 @@ export default function MazeGrid({ width = 20, height = 20 }) {
         <button className="maze-button" onClick={refreshMaze}>
           Refresh Maze
         </button>
-        <button className="maze-button" onClick={() => bfs([1, 0])}>
+        <button className="maze-button" onClick={() => bfs(start)}>
           BFS
         </button>
-        <button className="maze-button" onClick={() => dfs([1, 0])}>
+        <button className="maze-button" onClick={() => dfs(start, maze)}>
           DFS
+          print
         </button>
-        <button className="maze-button" onClick={() => starA([1, 0],[width - 1, height - 2])}>
+        <button className="maze-button" onClick={() => starA(start, end, maze)}>
           starA
         </button>
       </div>
