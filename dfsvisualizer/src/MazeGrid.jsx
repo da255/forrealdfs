@@ -15,7 +15,9 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     setMaze((prevMaze) =>
       prevMaze.map((row) =>
         row.map((cell) =>
-          cell === "visited" ? "path" : cell // Reset visited cells to "path"
+          cell === "visited" || cell === "shortest" 
+          ? (cell === "start" || cell === "end"  ? cell : "path") 
+            : cell 
         )
       )
     );
@@ -26,6 +28,19 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     resetCells()
     let queue = [startNode];
     let visited = new Set([`${startNode[0]},${startNode[1]}`]); 
+    let parent = {};
+    parent[`${startNode[0]},${startNode[1]}`] = null;
+
+    function reconstructPath(endNode){
+      let path = [];
+      let current = endNode;
+
+      while (current !== null){
+        path.push(current);
+        current = parent[`${current[0]},${current[1]}`]
+      }
+      return path.reverse();
+    }
 
 
     function visitCell(x, y) {
@@ -45,11 +60,28 @@ export default function MazeGrid({ width = 20, height = 20 }) {
 
       if (maze[y][x] === "end") {
         console.log("path found!");
+        
+        const shortestPath = reconstructPath([x,y]);
+        highlightPath(shortestPath);
+        console.log("Highlighting path:", shortestPath);
         return true;
       }
       return false;
     }
 
+    function highlightPath(path) {
+      console.log("Highlighting path:", path);
+      setMaze((prevMaze) =>
+        prevMaze.map((row, rowIndex) =>
+          row.map((cell, cellIndex) => 
+            path.some(([x, y]) => rowIndex === y && cellIndex === x)
+              ? (cell === "start" || cell === "end" ? cell : "shortest") 
+              : cell 
+          )
+        )
+      );
+    }
+    
     function step() {
       if (queue.length === 0) {
         return;
@@ -75,6 +107,8 @@ export default function MazeGrid({ width = 20, height = 20 }) {
           !visited.has(`${nx},${ny}`)
         ) {
           visited.add(`${nx},${ny}`);
+          parent[`${nx},${ny}`] = [x,y];
+          console.log("Parent Map:", parent);
           if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
             if (visitCell(nx, ny)) {
               return true;
@@ -100,6 +134,20 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     let stack = [startNode];
     console.log(start);
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
+    let parent = {};
+    parent[`${startNode[0]},${startNode[1]}`] = null;
+
+    function reconstructPath(endNode){
+      let path = [];
+      let current = endNode;
+
+      while (current !== null){
+        path.push(current);
+        current = parent[`${current[0]},${current[1]}`]
+      }
+      return path.reverse();
+    }
+
 
     function visitCell(x, y) {
       setMaze((prevMaze) =>
@@ -116,11 +164,25 @@ export default function MazeGrid({ width = 20, height = 20 }) {
 
       if (maze[y][x] === "end") {
         console.log("path found!");
+        const shortestPath = reconstructPath([x, y]);
+        highlightPath(shortestPath);
+        console.log("Highlighting path:", shortestPath);
         return true;
       }
       return false;
     }
-
+      function highlightPath(path) {
+        console.log("Highlighting path:", path);
+        setMaze((prevMaze) =>
+          prevMaze.map((row, rowIndex) =>
+            row.map((cell, cellIndex) =>
+              path.some(([x, y]) => rowIndex === y && cellIndex === x)
+                ? (cell === "start" || cell === "end" ? cell : "shortest") 
+                : cell
+          )
+        )
+      );
+    }
     function step() {
       if (stack.length === 0) {
         return;
@@ -148,6 +210,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
           !visited.has(`${nx},${ny}`)
         ) {
           visited.add(`${nx},${ny}`);
+          parent[`${nx},${ny}`] = [x,y];
           if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
             if (visitCell(nx, ny)) {
               return true;
@@ -173,6 +236,19 @@ export default function MazeGrid({ width = 20, height = 20 }) {
     let visited = new Set([`${startNode[0]},${startNode[1]}`]);
     let gScore = {[`${startNode[0]},${startNode[1]}`]: 0};
     let fScore = {[`${startNode[0]},${startNode[1]}`]: heuristic(startNode, endNode)};
+    let parent = {};
+    parent[`${startNode[0]},${startNode[1]}`] = null;
+
+    function reconstructPath(endNode) {
+      let path = [];
+      let current = endNode;
+  
+      while (current !== null) {
+        path.push(current);
+        current = parent[`${current[0]},${current[1]}`];
+      }
+      return path.reverse();
+    }
     
     function heuristic([x,y],[ex,ey]){
       return Math.abs(x - ex) + Math.abs(y - ey);
@@ -192,10 +268,25 @@ export default function MazeGrid({ width = 20, height = 20 }) {
       );
 
       if (maze[y][x] === "end") {
-        console.log("path found!");
+        console.log("path found!");        
+        const shortestPath = reconstructPath([x, y]);
+        highlightPath(shortestPath);
+        console.log("Highlighting path:", shortestPath);
         return true;
       }
       return false;
+    }
+    function highlightPath(path) {
+      console.log("Highlighting path:", path);
+      setMaze((prevMaze) =>
+        prevMaze.map((row, rowIndex) =>
+          row.map((cell, cellIndex) =>
+            path.some(([x, y]) => rowIndex === y && cellIndex === x)
+              ? (cell === "start" || cell === "end" ? cell : "shortest") 
+              : cell
+          )
+        )
+      );
     }
 
     function step() {
@@ -227,8 +318,9 @@ export default function MazeGrid({ width = 20, height = 20 }) {
           if (tentativeGscore < ((gScore[neighbour]) || Infinity)){
             gScore[neighbour] = tentativeGscore;
             fScore[neighbour] = tentativeGscore + heuristic([nx,ny], endNode);
+            parent[neighbour] = [x,y];
           }
-          visited.add(`${nx},${ny}`);
+          visited.add(`${nx},${ny}`);          
           if (maze[ny][nx] === "path" || maze[ny][nx] === "end") {
             if (visitCell(nx, ny)) {
               return true;
@@ -378,7 +470,7 @@ export default function MazeGrid({ width = 20, height = 20 }) {
         </button>
         <button className="maze-button" onClick={() => dfs(start, maze)}>
           DFS
-          print
+          
         </button>
         <button className="maze-button" onClick={() => starA(start, end, maze)}>
           starA
